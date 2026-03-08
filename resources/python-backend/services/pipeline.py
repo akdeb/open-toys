@@ -8,6 +8,7 @@ from typing import Dict
 import mlx.core as mx
 import numpy as np
 from mlx_lm import generate as mx_generate
+from mlx_lm import stream_generate as mx_stream_generate
 from mlx_lm.utils import load as load_llm
 from mlx_audio.stt import load as load_stt
 
@@ -17,9 +18,11 @@ from utils import STT, LLM, TTS, QWEN3_TTS
 try:
     from mlx_vlm import generate as mx_vlm_generate
     from mlx_vlm import load as load_vlm
+    from mlx_vlm import stream_generate as mx_vlm_stream_generate
 except Exception:
     mx_vlm_generate = None
     load_vlm = None
+    mx_vlm_stream_generate = None
 
 LLM_PROFILE_CACHE: Dict[str, Dict[str, object]] = {}
 
@@ -57,6 +60,13 @@ def _strip_thinking(text: str) -> str:
     cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
+def _strip_thinking_keep_ws(text: str) -> str:
+    if not text:
+        return text
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned
+
 
 class VoicePipeline:
     def __init__(
@@ -87,7 +97,9 @@ class VoicePipeline:
         self.llm = None
         self.tokenizer = None
 
-        self.mlx_lock = asyncio.Lock()
+        self.llm_lock = asyncio.Lock()
+        self.stt_lock = asyncio.Lock()
+        self.tts_lock = asyncio.Lock()
 
     async def init_models(self):
         self.llm, self.tokenizer, self.llm_backend = await self.load_llm_backend(
@@ -171,7 +183,7 @@ class VoicePipeline:
     async def set_tts_backend(self, backend: str) -> str:
         backend = self._normalize_tts_backend(backend)
 
-        async with self.mlx_lock:
+        async with self.tts_lock:
             self.tts_backend = backend
             await self._init_tts()
         return backend
@@ -272,6 +284,41 @@ class VoicePipeline:
         )
         return _strip_thinking(response.strip())
 
+    def _stream_generate_sync(self, prompt: str, max_tokens: int):
+        if self.llm_backend == "vlm":
+            if mx_vlm_stream_generate is None:
+                raise RuntimeError("mlx-vlm stream_generate is unavailable")
+            stream = mx_vlm_stream_generate(
+                self.llm,
+                self.tokenizer,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                enable_thinking=False,
+            )
+        else:
+            stream = mx_stream_generate(
+                self.llm,
+                self.tokenizer,
+                prompt=prompt,
+                max_tokens=max_tokens,
+            )
+
+        raw_accum = ""
+        clean_accum = ""
+        for item in stream:
+            segment = getattr(item, "text", "")
+            if not segment:
+                continue
+            raw_accum += str(segment)
+            cleaned = _strip_thinking_keep_ws(raw_accum)
+            if cleaned.startswith(clean_accum):
+                delta = cleaned[len(clean_accum) :]
+            else:
+                delta = cleaned
+            clean_accum = cleaned
+            if delta:
+                yield delta
+
     async def generate_text_simple(
         self,
         prompt: str,
@@ -286,7 +333,7 @@ class VoicePipeline:
             messages, add_generation_prompt=True, clear_thinking=clear_thinking
         )
 
-        async with self.mlx_lock:
+        async with self.llm_lock:
             response = await asyncio.to_thread(
                 lambda: self._generate(formatted_prompt, max_tokens)
             )
@@ -296,7 +343,7 @@ class VoicePipeline:
         audio = (
             np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
         )
-        async with self.mlx_lock:
+        async with self.stt_lock:
             result = await asyncio.to_thread(self.stt.generate, mx.array(audio))
         return result.text.strip()
 
@@ -323,11 +370,65 @@ class VoicePipeline:
             messages, add_generation_prompt=True, clear_thinking=clear_thinking
         )
 
-        async with self.mlx_lock:
+        async with self.llm_lock:
             response = await asyncio.to_thread(
                 lambda: self._generate(prompt, max_tokens)
             )
         return response.strip()
+
+    async def stream_response(
+        self,
+        text: str,
+        system_prompt: str = None,
+        messages=None,
+        max_tokens: int = 512,
+        clear_thinking: bool | None = None,
+        cancel_event: asyncio.Event | None = None,
+    ):
+        if messages is None:
+            sys_content = system_prompt or (
+                "You are a helpful voice assistant. You always respond with short "
+                "sentences and never use punctuation like parentheses or colons "
+                "that wouldn't appear in conversational speech."
+            )
+            messages = [
+                {"role": "system", "content": sys_content},
+                {"role": "user", "content": text},
+            ]
+
+        prompt = self._apply_chat_template(
+            messages, add_generation_prompt=True, clear_thinking=clear_thinking
+        )
+
+        queue: asyncio.Queue = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+        stream_error: list[Exception] = []
+
+        def _run_stream():
+            try:
+                for delta in self._stream_generate_sync(prompt, max_tokens):
+                    if cancel_event and cancel_event.is_set():
+                        break
+                    loop.call_soon_threadsafe(queue.put_nowait, delta)
+            except Exception as e:
+                stream_error.append(e)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        async with self.llm_lock:
+            task = asyncio.create_task(asyncio.to_thread(_run_stream))
+            try:
+                while True:
+                    chunk = await queue.get()
+                    if chunk is None:
+                        break
+                    if cancel_event and cancel_event.is_set():
+                        break
+                    yield chunk
+            finally:
+                await task
+                if stream_error:
+                    raise RuntimeError(f"LLM streaming failed: {stream_error[0]}")
 
     async def synthesize_speech(
         self,
@@ -353,7 +454,7 @@ class VoicePipeline:
             finally:
                 loop.call_soon_threadsafe(audio_queue.put_nowait, None)
 
-        async with self.mlx_lock:
+        async with self.tts_lock:
             tts_task = asyncio.create_task(asyncio.to_thread(_tts_stream))
             try:
                 while True:

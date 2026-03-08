@@ -710,7 +710,7 @@ async def switch_model(body: ModelSwitchRequest):
                 
                 # Hot-swap the model in the pipeline
                 if pipeline:
-                    async with pipeline.mlx_lock:
+                    async with pipeline.llm_lock:
                         # Replace the old model with the new one
                         old_llm = pipeline.llm
                         old_tokenizer = pipeline.tokenizer
@@ -1644,176 +1644,229 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
         except Exception as e:
             logger.error(f"Failed to log user conversation: {e}")
         
-        # Generate LLM response
-        logger.info(f"{client_label} Generating LLM response...")
-        try:
-            full_response = await pipeline.generate_response(
-                transcription,
-                messages=llm_messages,
-                clear_thinking=True if thinking_model else None,
-            )
-        except Exception as e:
-            logger.error(f"{client_label} LLM generation error: {e}")
-            return
+        # Stream LLM -> TTS concurrently (chunked text)
+        allow_paralinguistic = (
+            _normalize_tts_backend(getattr(pipeline, "tts_backend", None))
+            == "chatterbox-turbo"
+        )
+        active_voice_id = getattr(personality, "voice_id", None)
+        ref_audio_path = resolve_voice_ref_audio_path(active_voice_id)
+        ref_text = resolve_voice_ref_text(active_voice_id)
+        logger.info(
+            f"{client_label} Streaming response backend={getattr(pipeline, 'tts_backend', 'unknown')} "
+            f"ref_audio={'yes' if ref_audio_path else 'no'}"
+        )
 
-        raw_response = full_response
-        if thinking_model:
-            full_response = _strip_thinking(full_response)
-        allow_paralinguistic = _normalize_tts_backend(getattr(pipeline, "tts_backend", None)) == "chatterbox-turbo"
-        full_response = sanitize_spoken_text(full_response, allow_paralinguistic=allow_paralinguistic)
-        if raw_response != full_response:
-            logger.info(
-                f"{client_label} Sanitized LLM response (raw_len={len(raw_response)}, sanitized_len={len(full_response)})"
-            )
-        
-        if cancel_event.is_set():
-            logger.warning(f"{client_label} Cancelled before LLM response")
-            return
-        if not ws_open:
-            logger.warning(f"{client_label} WebSocket closed before LLM response")
-            return
-        if not full_response or not full_response.strip():
-            logger.warning(f"{client_label} Empty LLM response")
-            return
-        
-        logger.info(f"{client_label} LLM response: {full_response}")
-        
-        # Send response notification
         if for_esp32:
             try:
-                await websocket.send_json({
-                    "type": "server",
-                    "msg": "RESPONSE.CREATED",
-                    "volume_control": volume
-                })
+                await websocket.send_json(
+                    {"type": "server", "msg": "RESPONSE.CREATED", "volume_control": volume}
+                )
             except Exception:
                 return
+
+        def _extract_speakable_chunks(buffer: str, flush: bool = False):
+            chunks = []
+            while True:
+                m = re.search(r"(.+?[.!?。！？])(?:\s+|$)", buffer, flags=re.DOTALL)
+                if not m:
+                    break
+                chunk = buffer[: m.end(1)].strip()
+                buffer = buffer[m.end(1) :].lstrip()
+                if chunk:
+                    chunks.append(chunk)
+
+            if not flush and len(buffer) >= 140:
+                split_at = buffer.rfind(" ", 0, 120)
+                if split_at <= 0:
+                    split_at = 120
+                chunk = buffer[:split_at].strip()
+                buffer = buffer[split_at:].lstrip()
+                if chunk:
+                    chunks.append(chunk)
+
+            if flush:
+                final = buffer.strip()
+                if final:
+                    chunks.append(final)
+                buffer = ""
+
+            return chunks, buffer
+
+        text_queue: asyncio.Queue = asyncio.Queue(maxsize=16)
+        llm_text_parts: list[str] = []
+        llm_error: list[Exception] = []
+        carry = ""
+
+        async def _llm_producer():
+            nonlocal carry
+            try:
+                async for delta in pipeline.stream_response(
+                    transcription,
+                    messages=llm_messages,
+                    clear_thinking=True if thinking_model else None,
+                    cancel_event=cancel_event,
+                ):
+                    if cancel_event.is_set() or not ws_open:
+                        break
+                    llm_text_parts.append(delta)
+                    carry += delta
+                    ready, carry = _extract_speakable_chunks(carry, flush=False)
+                    for chunk in ready:
+                        chunk = sanitize_spoken_text(
+                            chunk, allow_paralinguistic=allow_paralinguistic
+                        ).strip()
+                        if chunk:
+                            await text_queue.put(chunk)
+            except Exception as e:
+                llm_error.append(e)
+            finally:
+                if carry and not cancel_event.is_set():
+                    ready, _ = _extract_speakable_chunks(carry, flush=True)
+                    for chunk in ready:
+                        chunk = sanitize_spoken_text(
+                            chunk, allow_paralinguistic=allow_paralinguistic
+                        ).strip()
+                        if chunk:
+                            await text_queue.put(chunk)
+                await text_queue.put(None)
+
+        producer_task = asyncio.create_task(_llm_producer())
+
+        if for_esp32:
+            opus_packets = []
+            opus = create_opus_packetizer(lambda pkt: opus_packets.append(pkt))
+            try:
+                while True:
+                    phrase = await text_queue.get()
+                    if phrase is None:
+                        break
+                    async for audio_chunk in pipeline.synthesize_speech(
+                        phrase,
+                        cancel_event,
+                        ref_audio_path=ref_audio_path,
+                        ref_text=ref_text,
+                    ):
+                        if cancel_event.is_set() or not ws_open:
+                            break
+                        chunk_mutable = bytearray(audio_chunk)
+                        utils.boost_limit_pcm16le_in_place(
+                            chunk_mutable, gain_db=GAIN_DB, ceiling=CEILING
+                        )
+                        opus.push(chunk_mutable)
+                        while opus_packets:
+                            try:
+                                await websocket.send_bytes(opus_packets.pop(0))
+                            except Exception:
+                                cancel_event.set()
+                                break
+            except Exception as e:
+                logger.error(f"{client_label} TTS stream error (esp32): {e}")
+                cancel_event.set()
+            finally:
+                await producer_task
+                opus.flush(pad_final_frame=True)
+                while opus_packets:
+                    try:
+                        await websocket.send_bytes(opus_packets.pop(0))
+                    except Exception:
+                        break
+                opus.close()
+                try:
+                    await websocket.send_json({"type": "server", "msg": "RESPONSE.COMPLETE"})
+                except Exception:
+                    pass
         else:
+            buffered = bytearray()
+            started = False
+            try:
+                while True:
+                    phrase = await text_queue.get()
+                    if phrase is None:
+                        break
+                    async for audio_chunk in pipeline.synthesize_speech(
+                        phrase,
+                        cancel_event,
+                        ref_audio_path=ref_audio_path,
+                        ref_text=ref_text,
+                    ):
+                        if cancel_event.is_set() or not ws_open:
+                            break
+                        if not started:
+                            buffered.extend(audio_chunk)
+                            if len(buffered) < PREBUFFER_BYTES:
+                                continue
+                            try:
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "audio",
+                                            "data": base64.b64encode(bytes(buffered)).decode(
+                                                "utf-8"
+                                            ),
+                                        }
+                                    )
+                                )
+                            except Exception:
+                                break
+                            buffered.clear()
+                            started = True
+                        else:
+                            try:
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "audio",
+                                            "data": base64.b64encode(audio_chunk).decode("utf-8"),
+                                        }
+                                    )
+                                )
+                            except Exception:
+                                break
+            except Exception as e:
+                logger.error(f"{client_label} TTS stream error (desktop): {e}")
+                cancel_event.set()
+            finally:
+                await producer_task
+                if buffered:
+                    try:
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "audio",
+                                    "data": base64.b64encode(bytes(buffered)).decode("utf-8"),
+                                }
+                            )
+                        )
+                    except Exception:
+                        pass
+                try:
+                    await websocket.send_text(json.dumps({"type": "audio_end"}))
+                except Exception:
+                    pass
+
+        full_response = "".join(llm_text_parts)
+        full_response = sanitize_spoken_text(
+            full_response, allow_paralinguistic=allow_paralinguistic
+        ).strip()
+        if llm_error:
+            logger.error(f"{client_label} LLM generation error: {llm_error[0]}")
+        if not full_response:
+            return
+
+        logger.info(f"{client_label} LLM response: {full_response}")
+        if not for_esp32:
             try:
                 await websocket.send_text(json.dumps({"type": "response", "text": full_response}))
             except Exception:
-                return
-        
-        # Log AI response
+                pass
+
         try:
             db_service.db_service.log_conversation(
                 role="ai", transcript=full_response, session_id=session_id
             )
         except Exception as e:
             logger.error(f"Failed to log AI conversation: {e}")
-
-        # Stream TTS audio
-        active_voice_id = getattr(personality, "voice_id", None)
-        ref_audio_path = resolve_voice_ref_audio_path(active_voice_id)
-        ref_text = resolve_voice_ref_text(active_voice_id)
-        logger.info(
-            f"{client_label} TTS start backend={getattr(pipeline, 'tts_backend', 'unknown')} "
-            f"ref_audio={'yes' if ref_audio_path else 'no'}"
-        )
-        
-        if for_esp32:
-            # ESP32: Encode to Opus and send binary
-            opus_packets = []
-            opus = create_opus_packetizer(lambda pkt: opus_packets.append(pkt))
-            try:
-                async for audio_chunk in pipeline.synthesize_speech(
-                    full_response,
-                    cancel_event,
-                    ref_audio_path=ref_audio_path,
-                    ref_text=ref_text,
-                ):
-                    if cancel_event.is_set() or not ws_open:
-                        break
-                    
-                    # Boost and limit audio (in-place)
-                    # Ensure we have a mutable bytearray
-                    chunk_mutable = bytearray(audio_chunk)
-                    utils.boost_limit_pcm16le_in_place(chunk_mutable, gain_db=GAIN_DB, ceiling=CEILING)
-                    
-                    opus.push(chunk_mutable)
-                    while opus_packets:
-                        try:
-                            await websocket.send_bytes(opus_packets.pop(0))
-                        except Exception:
-                            cancel_event.set()
-                            break
-            except Exception as e:
-                logger.error(f"{client_label} TTS stream error (esp32): {e}")
-                cancel_event.set()
-            finally:
-                opus.flush(pad_final_frame=True)
-            while opus_packets:
-                try:
-                    await websocket.send_bytes(opus_packets.pop(0))
-                except Exception:
-                    break
-            opus.close()
-            
-            try:
-                await websocket.send_json({"type": "server", "msg": "RESPONSE.COMPLETE"})
-            except Exception:
-                pass
-        else:
-            # Desktop: Send base64-encoded audio with prebuffering
-            buffered = bytearray()
-            started = False
-
-            try:
-                async for audio_chunk in pipeline.synthesize_speech(
-                    full_response,
-                    cancel_event,
-                    ref_audio_path=ref_audio_path,
-                    ref_text=ref_text,
-                ):
-                    if cancel_event.is_set() or not ws_open:
-                        break
-
-                    if not started:
-                        buffered.extend(audio_chunk)
-                        if len(buffered) < PREBUFFER_BYTES:
-                            continue
-
-                        try:
-                            await websocket.send_text(
-                                json.dumps({
-                                    "type": "audio",
-                                    "data": base64.b64encode(bytes(buffered)).decode("utf-8"),
-                                })
-                            )
-                        except Exception:
-                            break
-                        buffered.clear()
-                        started = True
-                    else:
-                        try:
-                            await websocket.send_text(
-                                json.dumps({
-                                    "type": "audio",
-                                    "data": base64.b64encode(audio_chunk).decode("utf-8"),
-                                })
-                            )
-                        except Exception:
-                            break
-            except Exception as e:
-                logger.error(f"{client_label} TTS stream error (desktop): {e}")
-                cancel_event.set()
-
-            # Flush remaining buffered audio
-            if buffered:
-                try:
-                    await websocket.send_text(
-                        json.dumps({
-                            "type": "audio",
-                            "data": base64.b64encode(bytes(buffered)).decode("utf-8"),
-                        })
-                    )
-                except Exception:
-                    pass
-
-            try:
-                await websocket.send_text(json.dumps({"type": "audio_end"}))
-            except Exception:
-                pass
 
     try:
         while True:
