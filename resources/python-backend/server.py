@@ -41,6 +41,7 @@ from services import (
     get_local_ip,
     list_serial_ports,
     resolve_voice_ref_audio_path,
+    resolve_voice_ref_text,
     run_firmware_flash,
     sanitize_spoken_text,
 )
@@ -1506,7 +1507,9 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
         
         logger.info(f"{client_label} Greeting: {greeting_text}")
         
-        ref_audio_path = resolve_voice_ref_audio_path(getattr(personality, "voice_id", None))
+        active_voice_id = getattr(personality, "voice_id", None)
+        ref_audio_path = resolve_voice_ref_audio_path(active_voice_id)
+        ref_text = resolve_voice_ref_text(active_voice_id)
         
         if is_esp32:
             # ESP32: Send RESPONSE.CREATED, then Opus audio, then RESPONSE.COMPLETE
@@ -1518,7 +1521,11 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             opus_packets = []
             opus = create_opus_packetizer(lambda pkt: opus_packets.append(pkt))
             
-            async for audio_chunk in pipeline.synthesize_speech(greeting_text, ref_audio_path=ref_audio_path):
+            async for audio_chunk in pipeline.synthesize_speech(
+                greeting_text,
+                ref_audio_path=ref_audio_path,
+                ref_text=ref_text,
+            ):
                 chunk_mutable = bytearray(audio_chunk)
                 utils.boost_limit_pcm16le_in_place(chunk_mutable, gain_db=GAIN_DB, ceiling=CEILING)
                 opus.push(chunk_mutable)
@@ -1547,7 +1554,11 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             except Exception:
                 pass
             
-            async for audio_chunk in pipeline.synthesize_speech(greeting_text, ref_audio_path=ref_audio_path):
+            async for audio_chunk in pipeline.synthesize_speech(
+                greeting_text,
+                ref_audio_path=ref_audio_path,
+                ref_text=ref_text,
+            ):
                 try:
                     await websocket.send_text(
                         json.dumps({
@@ -1692,7 +1703,9 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             logger.error(f"Failed to log AI conversation: {e}")
 
         # Stream TTS audio
-        ref_audio_path = resolve_voice_ref_audio_path(getattr(personality, "voice_id", None))
+        active_voice_id = getattr(personality, "voice_id", None)
+        ref_audio_path = resolve_voice_ref_audio_path(active_voice_id)
+        ref_text = resolve_voice_ref_text(active_voice_id)
         logger.info(
             f"{client_label} TTS start backend={getattr(pipeline, 'tts_backend', 'unknown')} "
             f"ref_audio={'yes' if ref_audio_path else 'no'}"
@@ -1707,6 +1720,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                     full_response,
                     cancel_event,
                     ref_audio_path=ref_audio_path,
+                    ref_text=ref_text,
                 ):
                     if cancel_event.is_set() or not ws_open:
                         break
@@ -1749,6 +1763,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                     full_response,
                     cancel_event,
                     ref_audio_path=ref_audio_path,
+                    ref_text=ref_text,
                 ):
                     if cancel_event.is_set() or not ws_open:
                         break

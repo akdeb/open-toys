@@ -334,6 +334,7 @@ class VoicePipeline:
         text: str,
         cancel_event: asyncio.Event = None,
         ref_audio_path: str | None = None,
+        ref_text: str | None = None,
     ):
         audio_queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
@@ -341,7 +342,9 @@ class VoicePipeline:
 
         def _tts_stream():
             try:
-                for audio_bytes in self.tts.generate(text, ref_audio_path=ref_audio_path):
+                for audio_bytes in self.tts.generate(
+                    text, ref_audio_path=ref_audio_path, ref_text=ref_text
+                ):
                     if cancel_event and cancel_event.is_set():
                         break
                     loop.call_soon_threadsafe(audio_queue.put_nowait, audio_bytes)

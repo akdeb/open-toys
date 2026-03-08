@@ -1,6 +1,9 @@
 import os
+import json
 from pathlib import Path
 from typing import Optional
+
+VOICE_TRANSCRIPT_CACHE: dict[str, str] | None = None
 
 
 def resolve_voice_ref_audio_path(voice_id: Optional[str]) -> Optional[str]:
@@ -16,3 +19,29 @@ def resolve_voice_ref_audio_path(voice_id: Optional[str]) -> Optional[str]:
     except Exception:
         return None
     return None
+
+
+def resolve_voice_ref_text(voice_id: Optional[str]) -> Optional[str]:
+    if not voice_id:
+        return None
+
+    global VOICE_TRANSCRIPT_CACHE
+    if VOICE_TRANSCRIPT_CACHE is None:
+        VOICE_TRANSCRIPT_CACHE = {}
+        try:
+            repo_root = Path(__file__).resolve().parents[3]
+            voices_json = repo_root / "app" / "src" / "assets" / "voices.json"
+            if voices_json.exists():
+                payload = json.loads(voices_json.read_text(encoding="utf-8"))
+                if isinstance(payload, list):
+                    for item in payload:
+                        if not isinstance(item, dict):
+                            continue
+                        vid = str(item.get("voice_id") or "").strip()
+                        transcript = str(item.get("transcript") or "").strip()
+                        if vid and transcript:
+                            VOICE_TRANSCRIPT_CACHE[vid] = transcript
+        except Exception:
+            pass
+
+    return VOICE_TRANSCRIPT_CACHE.get(voice_id)

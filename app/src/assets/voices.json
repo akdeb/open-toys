@@ -4,6 +4,7 @@
     "gender": "male",
     "voice_name": "Paddy The Bear",
     "voice_description": "Based off Paddington Bear this character is a friendly and kind-hearted bear who always has a smile on his face.",
+    "transcript": "Mrs Brown says that in London, everyone is different, but that means anyone can fit in. I think she must be right, because although I don't look like anyone else, I really do feel at home. I will never be like other people, but that's all right, because I am a bear",
     "voice_src": "paddy_bear.wav"
   },
   {
@@ -11,6 +12,7 @@
     "gender": "female",
     "voice_name": "👩‍🎓 Highschooler",
     "voice_description": "Energetic high-school teen voice with playful cadence",
+    "transcript": "Yeah, it's chill. No pressure. Just do your thing and don't overthink it. That's where people mess up",
     "voice_src": "highschooler.wav"
   },
   {
@@ -18,6 +20,7 @@
     "gender": "male",
     "voice_name": "👴🏼 Old Wise Man",
     "voice_description": "Warm elderly storyteller voice with slow, deliberate delivery",
+    "transcript": "Slow down. Most problems aren't meant to be solved today. They soften when you give them time, and you grow strong by waiting.",
     "voice_src": "old_wise_man.wav"
   },
   {
@@ -25,6 +28,7 @@
     "gender": "male",
     "voice_name": "👩‍🏫 Narrator",
     "voice_description": "Clean neutral narrator voice for general-purpose reading",
+    "transcript": "When the day feels heavy, remember this: You are not behind. Life unfolds in its own time, like seasons changing. Be gentle with yourself today.",
     "voice_src": "narrator1.wav"
   },
   {
@@ -32,6 +36,7 @@
     "gender": "male",
     "voice_name": "🧑‍🎄 Father Christmas",
     "voice_description": "Deep cozy holiday Santa voice with a friendly, hearty tone",
+    "transcript": "What matters is that you try to be kind. You rest when you're tired, and you wake up tomorrow ready to do your best. That's more than enough",
     "voice_src": "father_christmas.wav"
   },
   {
@@ -39,6 +44,7 @@
     "gender": "female",
     "voice_name": "🇬🇧 British Woman Narrator",
     "voice_description": "Polished British female narrator with crisp articulation",
+    "transcript": "You don't need all the answers right now. Most things become clear only after we stop forcing them. Trust that you're learning, even on days that feel confusing. You are doing better than you think",
     "voice_src": "british_woman_narrator.wav"
   },
   {
@@ -46,6 +52,7 @@
     "gender": "male",
     "voice_name": "🧑🏻 Quiz Show Host",
     "voice_description": "Upbeat game-show host voice with punchy emphasis",
+    "transcript": "Okay, so hear me out for a second because this is actually wild. Like, people are not talking about this enough, and I've been thinking about it all week. We're gonna break it down, but first, quick context. Quick context, and then I'll tell you why this completely changed how I see everything",
     "voice_src": "quiz_show.wav"
   },
   {
@@ -53,6 +60,7 @@
     "gender": "female",
     "voice_name": "👧 Girl Voice",
     "voice_description": "Bright friendly female voice with a slightly higher pitch",
+    "transcript": "Hi. I'm really happy you're here today. We can make up a story or go on an adventure or just be silly together. There are no wrong ideas. If you imagine it, it can happen. So what should we do first?",
     "voice_src": "girl2.wav"
   },
   {
@@ -60,6 +68,7 @@
     "gender": "male",
     "voice_name": "👦🏻 Teen Boy",
     "voice_description": "Casual teen guy voice with laid-back energy",
+    "transcript": "Honestly, it's not that deep. Just do what feels right and don't stress about everyone watching. Half of them are just pretending they know what they're doing anyway. You'll be fine.",
     "voice_src": "teen_dude.wav"
   },
   {
@@ -67,6 +76,7 @@
     "gender": "male",
     "voice_name": "🦘 Aussie Guy",
     "voice_description": "Australian-accented guy voice with easygoing tone",
+    "transcript": "Crikey! Would you look at this beauty right here? Absolutely magnificent. Now I'm gonna get nice and close, but very gentle, very respectful. She's not aggressive, just misunderstood. See that reaction? That's pure instinct, mate. If we learn to understand these animals instead of fearing them, we can protect them",
     "voice_src": "aussie.wav"
   },
   {
@@ -74,6 +84,7 @@
     "gender": "male",
     "voice_name": "🤼‍♂️ Wrestling Announcer",
     "voice_description": "Hyped arena announcer voice with big, dramatic projection",
+    "transcript": "Ladies and gentlemen, hold on to your seats. The crowd is on its feet. The tension is electric, and you can feel it in the air. He's climbing back up. He's digging deep, and by the look in his eyes, you know this isn't over. One move could change everything, and here it comes. Oh, my word. Did you see that?",
     "voice_src": "wrestling.wav"
   },
   {
@@ -81,6 +92,7 @@
     "gender": "male",
     "voice_name": "🧌 Troll",
     "voice_description": "Goofy troll voice for pranks and comedic bits",
+    "transcript": "Grrr. You come cross bridge, yes? Bridge mine. I hear long time. Before stone, before song. You pay toll shinies crunchies, or nice scream. No tricksie talk. You step slow, or I make you fall down big",
     "voice_src": "troll.wav"
   },
   {
@@ -88,6 +100,7 @@
     "gender": "female",
     "voice_name": "👧 TikTok Girl",
     "voice_description": "Modern social-media narrator with quick upbeat rhythm",
+    "transcript": "Okay, wait, this outfit, it's actually doing something. I kept it really simple, but, like, the proportions are the whole point. The jacket's structured, everything underneath is soft, and the shoes, they just ground it",
     "voice_src": "tiktok.wav"
   },
   {
@@ -95,6 +108,7 @@
     "gender": "male",
     "voice_name": "📻 Radio Announcer",
     "voice_description": "Classic radio announcer voice with confident broadcast delivery",
+    "transcript": "Have you ever watched Little Orphan Annie? Taken a wooden nickel for something? Drank Pepsi-Cola? Smoked a Winston cigarette? Or tried rich, chocolatey Ovaltine? Because it'll make you feel swell",
     "voice_src": "radio.wav"
   },
   {
@@ -102,6 +116,7 @@
     "gender": "male",
     "voice_name": "🎅 Santa",
     "voice_description": "Warm, jolly Santa voice with friendly chuckle energy",
+    "transcript": "Ho ho ho! Your toy is awake, the AI elves are working locally, and Santa's workshop is officially running on localhost.",
     "voice_src": "santa.wav"
   }
 ]
