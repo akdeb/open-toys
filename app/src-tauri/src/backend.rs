@@ -17,7 +17,8 @@ pub fn ensure_port_free(port: u16) {
     if TcpStream::connect(addr).is_ok() {
         if port == 8000 {
             let _ = TcpStream::connect(addr).and_then(|mut stream| {
-                let req = b"POST /shutdown HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\n\r\n";
+                let req =
+                    b"POST /shutdown HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\n\r\n";
                 stream.write_all(req)
             });
             std::thread::sleep(Duration::from_millis(500));
@@ -65,8 +66,11 @@ pub fn stop_api_server(app: &tauri::AppHandle) {
 
 #[tauri::command]
 pub async fn start_backend(app: AppHandle) -> Result<String, String> {
-    if TcpStream::connect_timeout(&"127.0.0.1:8000".parse().unwrap(), Duration::from_millis(100))
-        .is_ok()
+    if TcpStream::connect_timeout(
+        &"127.0.0.1:8000".parse().unwrap(),
+        Duration::from_millis(100),
+    )
+    .is_ok()
     {
         return Ok("Backend already running".to_string());
     }
@@ -109,8 +113,14 @@ pub async fn start_backend(app: AppHandle) -> Result<String, String> {
         .arg("8000")
         .current_dir(&python_dir)
         .env("ELATO_DB_PATH", elato_db_path.to_string_lossy().to_string())
-        .env("ELATO_VOICES_DIR", elato_voices_dir.to_string_lossy().to_string())
-        .env("ELATO_IMAGES_DIR", elato_images_dir.to_string_lossy().to_string())
+        .env(
+            "ELATO_VOICES_DIR",
+            elato_voices_dir.to_string_lossy().to_string(),
+        )
+        .env(
+            "ELATO_IMAGES_DIR",
+            elato_images_dir.to_string_lossy().to_string(),
+        )
         .env("TOKENIZERS_PARALLELISM", "false")
         .env("HF_HUB_DISABLE_XET", "1")
         .env("HF_HUB_ENABLE_HF_TRANSFER", "1")
@@ -135,7 +145,11 @@ pub fn setup_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
         let resource_dir = app.path().resource_dir().ok();
         let bundled_backend = resource_dir.as_ref().map(|r| r.join("python-backend"));
 
-        if bundled_backend.as_ref().map(|p| p.exists()).unwrap_or(false) {
+        if bundled_backend
+            .as_ref()
+            .map(|p| p.exists())
+            .unwrap_or(false)
+        {
             bundled_backend.unwrap()
         } else {
             let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -170,8 +184,14 @@ pub fn setup_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
         .arg("8000")
         .current_dir(&python_dir)
         .env("ELATO_DB_PATH", elato_db_path.to_string_lossy().to_string())
-        .env("ELATO_VOICES_DIR", elato_voices_dir.to_string_lossy().to_string())
-        .env("ELATO_IMAGES_DIR", elato_images_dir.to_string_lossy().to_string())
+        .env(
+            "ELATO_VOICES_DIR",
+            elato_voices_dir.to_string_lossy().to_string(),
+        )
+        .env(
+            "ELATO_IMAGES_DIR",
+            elato_images_dir.to_string_lossy().to_string(),
+        )
         .env("TOKENIZERS_PARALLELISM", "false")
         .env("HF_HUB_DISABLE_XET", "1")
         .env("HF_HUB_ENABLE_HF_TRANSFER", "1")

@@ -166,7 +166,8 @@ pub async fn scan_local_models(_app: AppHandle) -> Result<Vec<ModelInfo>, String
 
                         let model_type = guess_model_type(&repo_id);
 
-                        let size_str = if let Some(model_path) = get_model_path(&hf_cache, &repo_id) {
+                        let size_str = if let Some(model_path) = get_model_path(&hf_cache, &repo_id)
+                        {
                             let size = get_dir_size(&model_path);
                             Some(format_size(size))
                         } else {
@@ -202,8 +203,11 @@ pub async fn download_model(app: AppHandle, repo_id: String) -> Result<String, S
         return Err("Python environment not set up. Please complete setup first.".to_string());
     }
 
-    app.emit("model-download-progress", format!("Downloading {}...", repo_id))
-        .ok();
+    app.emit(
+        "model-download-progress",
+        format!("Downloading {}...", repo_id),
+    )
+    .ok();
 
     let script = format!(
         r#"from huggingface_hub import snapshot_download; snapshot_download(repo_id="{}")"#,

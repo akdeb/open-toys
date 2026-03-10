@@ -14,6 +14,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             setup::check_setup_status,
+            setup::ensure_python_runtime,
             setup::create_python_venv,
             setup::install_python_deps,
             models::check_models_status,

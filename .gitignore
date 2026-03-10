@@ -2,3 +2,5 @@ resources/python_runtime/
 !resources/python_runtime/.gitkeep
 **/__pycache__/
 **/*.pyc
+*.zip
+app/OpenToys.zip

@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Where Toys Come Alive",
+  "productName": "OpenToys",
   "version": "0.1.0",
-  "identifier": "com.elato.epic-local-ai-toys",
+  "identifier": "com.elato.open-toys",
   "build": {
-    "beforeDevCommand": "npm run prepare:python-runtime && npm run dev",
+    "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run prepare:python-runtime && npm run build",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -29,8 +29,7 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "../../resources/python-backend",
-      "../../resources/python_runtime"
+      "../../resources/python-backend"
     ],
     "macOS": {
       "infoPlist": "./Info.plist",

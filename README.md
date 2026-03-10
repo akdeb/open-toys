@@ -30,7 +30,8 @@ elato/
 ├── arduino/
 ├── resources/
 ├────────── python-backend/
-├────────── python_runtime/
 ├────────── firmware/
 └── README.md
 ```
+
+Python 3.11 runtime is downloaded on first app setup into the app data directory.

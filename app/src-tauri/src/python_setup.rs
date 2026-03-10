@@ -88,7 +88,10 @@ fn resolve_pyproject_path(app: &AppHandle) -> Result<PathBuf, String> {
 pub fn pyproject_dependency_names(app: &AppHandle) -> Result<Vec<String>, String> {
     let pyproject_path = resolve_pyproject_path(app)?;
     if !pyproject_path.exists() {
-        return Err(format!("pyproject.toml not found at {}", pyproject_path.display()));
+        return Err(format!(
+            "pyproject.toml not found at {}",
+            pyproject_path.display()
+        ));
     }
 
     let pyproject = std::fs::read_to_string(&pyproject_path)
@@ -117,7 +120,10 @@ pub fn install_python_deps(app: &AppHandle, pip_path: PathBuf) -> Result<String,
 
     let pyproject_path = resolve_pyproject_path(app)?;
     if !pyproject_path.exists() {
-        return Err(format!("pyproject.toml not found at {}", pyproject_path.display()));
+        return Err(format!(
+            "pyproject.toml not found at {}",
+            pyproject_path.display()
+        ));
     }
 
     let pyproject = std::fs::read_to_string(&pyproject_path)
@@ -135,7 +141,9 @@ pub fn install_python_deps(app: &AppHandle, pip_path: PathBuf) -> Result<String,
         if dep.starts_with("mlx-audio") {
             // Reject duplicates to avoid ambiguity.
             if mlx_audio_spec.is_some() {
-                return Err("Multiple mlx-audio entries found in pyproject.toml dependencies".to_string());
+                return Err(
+                    "Multiple mlx-audio entries found in pyproject.toml dependencies".to_string(),
+                );
             }
             mlx_audio_spec = Some(dep);
         } else {

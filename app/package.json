@@ -7,9 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "prepare:python-runtime": "node scripts/ensure-python-runtime.mjs",
     "tauri": "tauri",
-    "tauri:build:dmg": "npm run prepare:python-runtime && tauri build --bundles dmg",
+    "tauri:build:dmg": "tauri build --bundles dmg",
     "mac:notarize:dmg": "node --input-type=module -e \"import fs from 'node:fs'; import path from 'node:path'; import { spawnSync } from 'node:child_process'; const dir = path.join('src-tauri','target','release','bundle','dmg'); const dmg = fs.readdirSync(dir).find((f) => f.endsWith('.dmg')); if (!dmg) { console.error('No .dmg found in ' + dir); process.exit(1); } const dmgPath = path.join(dir, dmg); const profile = process.env.NOTARYTOOL_PROFILE; if (!profile) { console.error('Missing NOTARYTOOL_PROFILE (keychain profile name for notarytool)'); process.exit(1); } let r = spawnSync('xcrun', ['notarytool', 'submit', dmgPath, '--wait', '--keychain-profile', profile], { stdio: 'inherit' }); if (r.status) process.exit(r.status); r = spawnSync('xcrun', ['stapler', 'staple', dmgPath], { stdio: 'inherit' }); process.exit(r.status || 0);\"",
     "mac:verify:dmg": "node --input-type=module -e \"import fs from 'node:fs'; import path from 'node:path'; import { spawnSync } from 'node:child_process'; const dir = path.join('src-tauri','target','release','bundle','dmg'); const dmg = fs.readdirSync(dir).find((f) => f.endsWith('.dmg')); if (!dmg) { console.error('No .dmg found in ' + dir); process.exit(1); } const dmgPath = path.join(dir, dmg); const r = spawnSync('spctl', ['-a', '-vvv', '-t', 'open', dmgPath], { stdio: 'inherit' }); process.exit(r.status || 0);\"",
     "mac:release:dmg": "npm run tauri:build:dmg && npm run mac:notarize:dmg && npm run mac:verify:dmg"

@@ -15,22 +15,37 @@ interface SetupStatus {
   deps_installed: boolean;
 }
 
-type SetupStep = "checking" | "creating-venv" | "installing-deps" | "complete";
+type BootstrapStep =
+  | "checking"
+  | "downloading-python"
+  | "creating-venv"
+  | "installing-deps"
+  | "complete";
 
 export const SetupPage = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<SetupStep>("checking");
+  const [step, setStep] = useState<BootstrapStep>("checking");
   const [, setStatus] = useState<SetupStatus | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const activeStepLabel =
     step === "installing-deps"
       ? SETUP_COPY.activeStepTeaching
+      : step === "downloading-python"
+        ? SETUP_COPY.activeStepDownloadingPython
       : step === "creating-venv" || step === "checking"
         ? SETUP_COPY.activeStepPreparing
         : "Ready";
   const progressPercent =
-    step === "complete" ? 100 : step === "installing-deps" ? 66 : step === "creating-venv" ? 33 : 10;
+    step === "complete"
+      ? 100
+      : step === "installing-deps"
+        ? 75
+        : step === "creating-venv"
+          ? 50
+          : step === "downloading-python"
+            ? 25
+            : 10;
 
   useEffect(() => {
     const unlisten = listen<string>("setup-progress", (event) => {
@@ -67,6 +82,10 @@ export const SetupPage = () => {
   const runFullSetup = async () => {
     try {
       setError(null);
+      setStep("downloading-python");
+      setProgress(`${SETUP_COPY.activeStepDownloadingPython}...`);
+      await invoke("ensure_python_runtime");
+
       setStep("creating-venv");
       setProgress(`${SETUP_COPY.activeStepPreparing}...`);
       await invoke("create_python_venv");
