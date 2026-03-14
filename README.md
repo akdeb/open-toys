@@ -34,10 +34,10 @@ Create experiences with personalities that can play games, tell stories, engage 
 
 <table>
 <tr>
-<td><img src="assets/card1.png" height="260"></td>
-<td><img src="assets/card2.png" height="260"></td>
-<td><img src="assets/card3.png" height="260"></td>
-<td><img src="assets/card4.png" height="260"></td>
+<td><img src="assets/card1.png" height="280"></td>
+<td><img src="assets/card2.png" height="280"></td>
+<td><img src="assets/card3.png" height="280"></td>
+<td><img src="assets/card4.png" height="280"></td>
 </tr>
 </table>
 
