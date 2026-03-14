@@ -25,6 +25,26 @@ Build your own Local AI Toys, Desk Companions, Robots and more with an ESP32. Op
 5. Run `npm install`
 6. Run `npm run tauri dev`
 
+## ESP32 DIY Hardware
+
+![ESP32 DIY Hardware](assets/pcb-design.png)
+
+## ESP32-S3 GPIO Pins (recommended)
+| Component / Signal | Pin |
+|--------------------|-----|
+| Blue LED           | 13  |
+| Red LED            | 9   |
+| Green LED          | 8   |
+| I2S SD (Mic Data)  | 14  |
+| I2S WS (Mic LRCLK) | 4   |
+| I2S SCK (Mic BCLK) | 1   |
+| I2S WS OUT         | 5   |
+| I2S BCK OUT        | 6   |
+| I2S DATA OUT       | 7   |
+| I2S SD OUT         | 10  |
+| Button/Touchpad    | 2 |
+
+
 ## App Design
 
 ![App Design](assets/app.png)
