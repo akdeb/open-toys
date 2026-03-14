@@ -30,19 +30,24 @@ Build your own Local AI Toys, Desk Companions, Robots and more with an ESP32. Op
 ![ESP32 DIY Hardware](assets/pcb-design.png)
 
 ## ESP32-S3 GPIO Pins (recommended)
-| Component / Signal | Pin |
-|--------------------|-----|
-| Blue LED           | 13  |
-| Red LED            | 9   |
-| Green LED          | 8   |
-| I2S SD (Mic Data)  | 14  |
-| I2S WS (Mic LRCLK) | 4   |
-| I2S SCK (Mic BCLK) | 1   |
-| I2S WS OUT         | 5   |
-| I2S BCK OUT        | 6   |
-| I2S DATA OUT       | 7   |
-| I2S SD OUT         | 10  |
-| Button/Touchpad    | 2 |
+<table width="100%">
+<tr>
+<th align="left">Component / Signal</th>
+<th align="left">Pin</th>
+</tr>
+
+<tr><td>Blue LED</td><td>13</td></tr>
+<tr><td>Red LED</td><td>9</td></tr>
+<tr><td>Green LED</td><td>8</td></tr>
+<tr><td>I2S SD (Mic Data)</td><td>14</td></tr>
+<tr><td>I2S WS (Mic LRCLK)</td><td>4</td></tr>
+<tr><td>I2S SCK (Mic BCLK)</td><td>1</td></tr>
+<tr><td>I2S WS OUT</td><td>5</td></tr>
+<tr><td>I2S BCK OUT</td><td>6</td></tr>
+<tr><td>I2S DATA OUT</td><td>7</td></tr>
+<tr><td>I2S SD OUT</td><td>10</td></tr>
+<tr><td>Button / Touchpad</td><td>2</td></tr>
+</table>
 
 
 ## App Design
