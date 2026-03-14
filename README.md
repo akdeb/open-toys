@@ -1,15 +1,15 @@
 ![OpenToys Cover](assets/cover.png)
 
-# Demo
+# 🎥 Demo Video
 
 [![OpenToys Demo](assets/demo.png)](https://youtu.be/YTIHN36Lb7M)
 
-# OpenToys
+# 👾 OpenToys
 
 Build your own Local AI Toys, Desk Companions, Robots and more with an ESP32. OpenToys runs fully on-device on Apple Silicon without sending your data to the cloud.
 
 
-## Why OpenToys?
+## 🤔 Why OpenToys?
 
 - **Fully on-device**: No cloud, no subscriptions, no data leaving your home.
 - **Multilingual**: OpenToys supports multiple languages: English, Chinese, Spanish, French, Japanese and more!
@@ -17,19 +17,19 @@ Build your own Local AI Toys, Desk Companions, Robots and more with an ESP32. Op
 - **Customizable**: Build your own toys, companions, robots and more with an ESP32.
 - **Open-source**: The community is open-source and free to use and contribute to.
 
-## Core stack
+## 💻 Core stack
 
 - TTS: Qwen3-TTS and Chatterbox-turbo
 - LLMs: any LLM from `mlx-community` (Qwen, Llama, Mistral, etc.)
 - Platform focus: Apple Silicon (M1, M2, M3, M4...)
 - Privacy model: local-first, works without internet (after setup/model downloads)
 
-## Download
+## 📥 Download
 
 - Direct DMG: [OpenToys_0.1.0_aarch64.dmg](https://github.com/akdeb/open-toys/releases/latest/download/OpenToys_0.1.0_aarch64.dmg)
 - All releases: [GitHub Releases](https://github.com/akdeb/open-toys/releases)
 
-## Local development setup
+## 🔧 Local development setup
 
 1. Clone the repository with `git clone https://github.com/akdeb/open-toys.git`
 2. Install Rust and Tauri with `curl https://sh.rustup.rs -sSf | sh`
@@ -38,7 +38,7 @@ Build your own Local AI Toys, Desk Companions, Robots and more with an ESP32. Op
 5. Run `npm install`
 6. Run `npm run tauri dev`
 
-## Flash to ESP32
+## ⚡️ Flash to ESP32
 
 1. Connect your ESP32-S3 to your Apple Silicon Mac.
 2. In OpenToys, go to `Settings` and click `Flash Firmware`.
